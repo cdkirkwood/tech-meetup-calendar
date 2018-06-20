@@ -8,6 +8,7 @@
     "firebase": "^5.0.4",
     "firebase-app": "0.0.1",
     "firebase-auth": "^0.1.2",
+    "googleapis": "^27.0.0",
     "react": "^16.4.1",
     "react-dom": "^16.4.1",
     "react-scripts": "1.1.4"
