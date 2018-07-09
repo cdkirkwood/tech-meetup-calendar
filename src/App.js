@@ -48,6 +48,9 @@ class App extends Component {
       discoveryDocs: discoveryDocs,
       scope: 'https://www.googleapis.com/auth/calendar'
     }).then(() => {
+      window.gapi.client.load('calendar', 'v3', () => {
+        console.log(window.gapi.client.calendar)
+      })
       // window.gapi.auth2.getAuthInstance().isSignedIn.listen(this.updateSigninStatus)
       // this.updateSigninStatus(window.gapi.auth2.getAuthInstance().isSignedIn.get())
       //this.setState(() => ({ gapiReady: true }))
@@ -84,31 +87,31 @@ class App extends Component {
           timeZone: event.end.timezone
         },
       }
-      // const newEvent = {
-      //   summary: 'poop show',
-      //   //description: 'best in town',
-      //   start: {
-      //     dateTime: '2018-06-20T17:30:00-07:00',
-      //     timeZone: 'America/New_York'
-      //   },
-      //   end: {
-      //     dateTime: '2018-06-20T19:30:00-07:00',
-      //     timeZone: 'America/New_York'
-      //   },
-      // }
-      //console.log(newEvent.start.dateTime)
       this.createEvent(newEvent)
     })
   }
 
+  getEvents = () => {
+    console.log('this is clear', window.gapi.client.calendar.calendars )
+    window.gapi.client.calendar.events.list({
+      calendarId
+    }).then((events) => console.log(events))
+  }
+
   createEvent = (newEvent) => {
-    window.gapi.client.load('calendar', 'v3', () => {
       window.gapi.client.calendar.events.insert({
         calendarId,
         resource: newEvent
       }).then((event) => console.log(event))
-    })
-    //console.log(event)
+  }
+
+  clearEvents = () => {
+      window.gapi.client.calendar.events.delete({
+        calendarId,
+        eventId: '6sem393s9a2qo0rlns3v697g7v'
+      }).then(thing =>
+        console.log(thing)
+      ).catch(err => console.error(err.message))
   }
 
   render() {
@@ -124,6 +127,8 @@ class App extends Component {
         <button onClick={this.handleSignInClick}>Google Sign In</button>
         <button onClick={this.handleSignOutClick}>Google Sign Out</button>
         <button onClick={this.bulkEventCreator}>Create Event</button>
+        <button onClick={this.clearEvents}>Clear Events</button>
+        <button onClick={this.getEvents}>Get Events</button>
       </div>
     );
   }
