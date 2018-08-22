@@ -1,33 +1,30 @@
-'use strict'
 import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import axios from 'axios'
-import firebase from 'firebase'
-import oAuth from 'firebase/auth'
-import Events from './Events'
+//import Events from './Events'
 const calendarId = process.env.REACT_APP_CALENDAR_ID
 const calendarApiKey = process.env.REACT_APP_CALENDAR_API_KEY
 const calendarClientId = process.env.REACT_APP_CALENDAR_CLIENT_ID
 const eventBriteKey = process.env.REACT_APP_EVENTBRITE_API_KEY
-const firebaseKey = process.env.REACT_APP_FIREBASE_API_KEY
+const meetupApiKey = process.env.REACT_APP_MEETUP_API_KEY
 const latitude = 40.7358
 const longitude = -74.0036
-const discoveryDocs = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+const discoveryDocs = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"]
 let url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${calendarApiKey}`
 
 class App extends Component {
   constructor(props) {
     super(props)
     this.state = {
-      events: {}
+      eBevents: [],
+      googleEvents: []
     }
   }
   componentDidMount = async () => {
     this.initGapi()
-    const events = await axios.get(`https://www.eventbriteapi.com/v3/events/search/?q=tech%20javascript&sort_by=date&location.latitude=${latitude}&location.longitude=${longitude}&location.within=10mi&token=${eventBriteKey}`)
-    this.setState(() => ({ events: events.data.events }))
-    console.log(this.state.events)
+    const file = await axios.get('http://files.olo.com/pizzas.json')
+    console.log(file)
   }
 
   initGapi = () => {
@@ -49,7 +46,7 @@ class App extends Component {
       scope: 'https://www.googleapis.com/auth/calendar'
     }).then(() => {
       window.gapi.client.load('calendar', 'v3', () => {
-        console.log(window.gapi.client.calendar)
+        this.getCalEvents()
       })
       // window.gapi.auth2.getAuthInstance().isSignedIn.listen(this.updateSigninStatus)
       // this.updateSigninStatus(window.gapi.auth2.getAuthInstance().isSignedIn.get())
@@ -74,7 +71,7 @@ class App extends Component {
   }
 
   bulkEventCreator = () => {
-    this.state.events.forEach(event => {
+    this.state.eBevents.forEach(event => {
       const newEvent = {
         summary: event.name.text,
         description: event.description.text,
@@ -91,27 +88,63 @@ class App extends Component {
     })
   }
 
-  getEvents = () => {
-    console.log('this is clear', window.gapi.client.calendar.calendars )
+  getCalEvents = () => {
     window.gapi.client.calendar.events.list({
       calendarId
-    }).then((events) => console.log(events))
+    })
+    .then((events) => this.setState({googleEvents: events.result.items}))
+    .catch(err => console.error(err.message))
+  }
+
+  getEBEvents = () => {
+    axios.get(`https://www.eventbriteapi.com/v3/events/search/?q=tech%20javascript&sort_by=date&location.latitude=${latitude}&location.longitude=${longitude}&location.within=10mi&token=${eventBriteKey}`)
+    .then(events => {
+      const newEvents = events.data.events.filter(event => !this.state.googleEvents.find(googleEvent => {
+        return googleEvent.summary === event.name.text
+      }))
+      this.setState(() => ({ eBevents: newEvents }))
+    })
+  }
+
+  getMUEvents = () => {
+    axios.get(`https://api.meetup.com/find/upcoming_events?key=${meetupApiKey}topic_category=tech&lat=${latitude}&lon=${longitude}&radius=10sign=true`)
+    .then((events) => console.log(events))
+    // .then(events => {
+    //   const newEvents = events.data.events.filter(event => !this.state.googleEvents.find(googleEvent => {
+    //     return googleEvent.summary === event.name.text
+    //   }))
+    //   this.setState(() => ({ eBevents: newEvents }))
+    // })
   }
 
   createEvent = (newEvent) => {
-      window.gapi.client.calendar.events.insert({
-        calendarId,
-        resource: newEvent
-      }).then((event) => console.log(event))
+    window.gapi.client.calendar.events.insert({
+      calendarId,
+      resource: newEvent
+    })
+    .then(event => {
+      this.setState(prevState => {
+        const newState = [...prevState.googleEvents, event.result]
+        return {googleEvents: newState}
+      })
+    })
+    .catch(err => console.error(err.message))
   }
 
   clearEvents = () => {
-      window.gapi.client.calendar.events.delete({
-        calendarId,
-        eventId: '6sem393s9a2qo0rlns3v697g7v'
-      }).then(thing =>
-        console.log(thing)
-      ).catch(err => console.error(err.message))
+    this.state.googleEvents.forEach(event => {
+      this.deleteEvent(event.id)
+    })
+  }
+
+  deleteEvent = (eventId) => {
+    window.gapi.client.calendar.events.delete({
+      calendarId,
+      eventId
+    })
+    .then(thing =>
+      console.log(thing))
+    .catch(err => console.error(err.message))
   }
 
   render() {
@@ -128,7 +161,8 @@ class App extends Component {
         <button onClick={this.handleSignOutClick}>Google Sign Out</button>
         <button onClick={this.bulkEventCreator}>Create Event</button>
         <button onClick={this.clearEvents}>Clear Events</button>
-        <button onClick={this.getEvents}>Get Events</button>
+        <button onClick={this.getEBEvents}>Get EB Events</button>
+        <button onClick={this.getMUEvents}>Get MU Events</button>
       </div>
     );
   }
